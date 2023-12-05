@@ -1,4 +1,6 @@
 from collections import defaultdict
+import functools
+import operator
 
 input = """467..114..
 ...*......
@@ -115,15 +117,7 @@ def _main_part_2(input):
 
             start = None
 
-    def multiply_array(l):
-        acc = 1
-        for item in l:
-            acc = acc * item
-
-        return acc
-
-    result = 0
-    result += sum(multiply_array(l) for l in numbers_per_gear.values() if len(l) == 2)
+    result = sum(functools.reduce(operator.mul, l, 1) for l in numbers_per_gear.values() if len(l) == 2)
 
     print(result)
     return result
