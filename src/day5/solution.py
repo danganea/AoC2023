@@ -1,5 +1,8 @@
 """
     Pretty ugly solution this time, I'll need to refactor it at some point :)
+
+    I included the bruteforce solution to part 2, which amounts to yielding all the seeds (so as to not consume memory) from a generator
+    and then solving part 1 basically.
 """
 import math
 from dataclasses import dataclass, field
@@ -109,21 +112,20 @@ def intersect(r1_start, r1_end, r2_start, r2_end) -> tuple[int, int] | None:
     return None
 
 
-def _part2(seeds: list[tuple[int, int]], rangeMaps: list[RangeMap]) -> None:
-    current_seed_mapping = [s for s in seeds]
+def _part2(seeds: list[tuple[int, int]], mappings: list[RangeMap]) -> None:
+    intervals = [s for s in seeds]
     next_ranges = []
 
-    # For debugging we can track the "journey" of this seed.
-    debug_seed = 82
-    debug = False
+    # sort ranges in mappings by source_range_start
+    for mapping in mappings:
+        mapping.ranges.sort(key=lambda r: r.source_range_start)
 
-    for rangeMap in rangeMaps:
-        found_seed_move = False
-        indices_to_remove = set()
 
-        for map_index, curr_mapping in enumerate(current_seed_mapping):
-            curr_start, curr_end = curr_mapping
-            for range in rangeMap.ranges:
+    for mapping in mappings:
+        for interval in intervals:
+            curr_start, curr_end = interval
+            found_intersection = False
+            for range in mapping.ranges:
                 intersection = intersect(
                     curr_start,
                     curr_end,
@@ -143,20 +145,6 @@ def _part2(seeds: list[tuple[int, int]], rangeMaps: list[RangeMap]) -> None:
                 new_range = (start_destination, start_destination + length_destination)
                 next_ranges.append(new_range)
 
-                if debug and intersection_start <= debug_seed <= intersection_end:
-                    print(
-                        f"Found {debug_seed} in range {new_range}. Source type is {rangeMap.source_type} and destination type is {rangeMap.destination_type}"
-                    )
-
-                    # Determine where it is moved and print it
-                    print(
-                        f"Moved to {range.destination_range_start + (debug_seed - range.source_range_start)}"
-                    )
-                    debug_seed = range.destination_range_start + (
-                        debug_seed - range.source_range_start
-                    )
-                    found_seed_move = True
-
                 remaining_bit_left = (
                     (curr_start, intersection_start - 1)
                     if intersection_start > curr_start
@@ -169,37 +157,23 @@ def _part2(seeds: list[tuple[int, int]], rangeMaps: list[RangeMap]) -> None:
                 )
 
                 if remaining_bit_left is not None:
-                    current_seed_mapping.append(remaining_bit_left)
+                    next_ranges.append(remaining_bit_left)
 
                 if remaining_bit_right is not None:
-                    current_seed_mapping.append(remaining_bit_right)
-
-                indices_to_remove.add(map_index)
+                    intervals.append(remaining_bit_right)
+                
+                found_intersection = True
 
                 break
+            
+            if not found_intersection:
+                next_ranges.append(interval)
 
-        # print(f"Range map representing {rangeMap.source_type} to {rangeMap.destination_type} finished")
-        # print("The previous seed mapping was:")
-        # print(current_seed_mapping)
-
-        # only keep the ones that were not removed
-        current_seed_mapping = [
-            s for i, s in enumerate(current_seed_mapping) if i not in indices_to_remove
-        ]
-
-        next_ranges.extend(current_seed_mapping)
-        # print("The next seed mapping is:")
-        # print(next_ranges)
-        current_seed_mapping = next_ranges
+        intervals = next_ranges
         next_ranges = []
 
-        if debug and not found_seed_move:
-            print(
-                f"Range map representing {rangeMap.source_type} to {rangeMap.destination_type} did not move the seed {debug_seed}"
-            )
 
-    starts = [s for s, _ in current_seed_mapping]
-    # print(starts)
+    starts = [s for s, _ in intervals]
 
     print(min(starts))
 
